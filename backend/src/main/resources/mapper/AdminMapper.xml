@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.voxinsight.mapper.AdminMapper">
+  <select id="overview" resultType="com.voxinsight.model.AdminRows$OverviewRow">
+    SELECT
+      (SELECT COUNT(*) FROM users) AS user_count,
+      (SELECT COUNT(*) FROM topics) AS topic_count,
+      (SELECT COUNT(*) FROM training_sessions) AS session_count,
+      (SELECT COUNT(*) FROM user_feedbacks WHERE status = '待处理') AS pending_feedback_count
+  </select>
+
+  <select id="listUsers" resultType="com.voxinsight.model.AdminRows$UserRow">
+    SELECT
+      u.user_id AS id,
+      u.login_name,
+      u.nickname,
+      u.school,
+      u.major,
+      u.bio,
+      u.role,
+      DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i') AS created_at,
+      (SELECT COUNT(*) FROM training_sessions s WHERE s.user_id = u.user_id) AS session_count
+    FROM users u
+    <where>
+      <if test="keyword != null and keyword != ''">
+        AND (
+          u.login_name LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\'
+          OR u.nickname LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\'
+        )
+      </if>
+    </where>
+    ORDER BY u.user_id
+  </select>
+
+  <select id="findUserRole" resultType="string">
+    SELECT role FROM users WHERE user_id = #{id}
+  </select>
+
+  <update id="updateUser">
+    UPDATE users
+    SET nickname = #{nickname},
+        school = #{school},
+        major = #{major},
+        bio = #{bio},
+        role = #{role}
+    WHERE user_id = #{id}
+  </update>
+
+  <delete id="deleteUser">
+    DELETE FROM users WHERE user_id = #{id}
+  </delete>
+
+  <select id="listCategories" resultType="com.voxinsight.model.AdminRows$CategoryRow">
+    SELECT category_id AS id, category_name AS name, sort_order
+    FROM categories
+    ORDER BY sort_order, category_id
+  </select>
+
+  <select id="findCategoryId" resultType="java.lang.Long">
+    SELECT category_id FROM categories WHERE category_id = #{id}
+  </select>
+
+  <insert id="insertCategory">
+    INSERT INTO categories (category_name, sort_order)
+    SELECT #{name}, COALESCE(MAX(sort_order), 0) + 1 FROM categories
+  </insert>
+
+  <select id="listTopics" resultType="com.voxinsight.model.AdminRows$TopicRow">
+    SELECT
+      t.topic_id AS id,
+      t.category_id,
+      c.category_name,
+      t.title,
+      t.difficulty,
+      t.duration_min,
+      t.duration_max,
+      t.guide_text AS guide,
+      t.is_recommended AS recommended,
+      t.sort_order,
+      (SELECT COUNT(*) FROM topic_checkpoints k WHERE k.topic_id = t.topic_id) AS checkpoint_count
+    FROM topics t
+    INNER JOIN categories c ON c.category_id = t.category_id
+    ORDER BY t.sort_order, t.topic_id
+  </select>
+
+  <select id="findTopic" resultType="com.voxinsight.model.AdminRows$TopicRow">
+    SELECT
+      t.topic_id AS id,
+      t.category_id,
+      c.category_name,
+      t.title,
+      t.difficulty,
+      t.duration_min,
+      t.duration_max,
+      t.guide_text AS guide,
+      t.is_recommended AS recommended,
+      t.sort_order,
+      (SELECT COUNT(*) FROM topic_checkpoints k WHERE k.topic_id = t.topic_id) AS checkpoint_count
+    FROM topics t
+    INNER JOIN categories c ON c.category_id = t.category_id
+    WHERE t.topic_id = #{id}
+  </select>
+
+  <select id="listCheckpoints" resultType="com.voxinsight.model.AdminRows$CheckpointRow">
+    SELECT label, keywords
+    FROM topic_checkpoints
+    WHERE topic_id = #{topicId}
+    ORDER BY sort_order, checkpoint_id
+  </select>
+
+  <select id="countSessionsByTopic" resultType="int">
+    SELECT COUNT(*) FROM training_sessions WHERE topic_id = #{topicId}
+  </select>
+
+  <update id="clearRecommended">
+    UPDATE topics SET is_recommended = 0
+  </update>
+
+  <insert id="insertTopic" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO topics (
+      category_id, title, difficulty, duration_min, duration_max, guide_text, is_recommended, sort_order
+    ) VALUES (
+      #{categoryId}, #{title}, #{difficulty}, #{durationMin}, #{durationMax},
+      #{guide}, #{recommended}, #{sortOrder}
+    )
+  </insert>
+
+  <update id="updateTopic">
+    UPDATE topics
+    SET category_id = #{categoryId},
+        title = #{title},
+        difficulty = #{difficulty},
+        duration_min = #{durationMin},
+        duration_max = #{durationMax},
+        guide_text = #{guide},
+        is_recommended = #{recommended},
+        sort_order = #{sortOrder}
+    WHERE topic_id = #{id}
+  </update>
+
+  <delete id="deleteCheckpoints">
+    DELETE FROM topic_checkpoints WHERE topic_id = #{topicId}
+  </delete>
+
+  <insert id="insertCheckpoint">
+    INSERT INTO topic_checkpoints (topic_id, label, keywords, sort_order)
+    VALUES (#{topicId}, #{label}, #{keywords}, #{sortOrder})
+  </insert>
+
+  <delete id="deleteTopic">
+    DELETE FROM topics WHERE topic_id = #{id}
+  </delete>
+
+  <select id="listSessions" resultType="com.voxinsight.model.AdminRows$SessionRow">
+    SELECT
+      s.session_id AS id,
+      u.login_name,
+      u.nickname,
+      t.title,
+      s.status,
+      DATE_FORMAT(s.started_at, '%Y-%m-%d %H:%i') AS started_at,
+      DATE_FORMAT(s.ended_at, '%Y-%m-%d %H:%i') AS ended_at,
+      s.duration_seconds,
+      r.report_id,
+      r.total_score AS score
+    FROM training_sessions s
+    INNER JOIN users u ON u.user_id = s.user_id
+    INNER JOIN topics t ON t.topic_id = s.topic_id
+    LEFT JOIN analysis_reports r ON r.session_id = s.session_id
+    <where>
+      <if test="status != null and status != ''">
+        AND s.status = #{status}
+      </if>
+    </where>
+    ORDER BY s.session_id DESC
+    LIMIT 200
+  </select>
+
+  <select id="findSession" resultType="com.voxinsight.model.AdminRows$SessionDetailRow">
+    SELECT
+      s.session_id AS id,
+      u.login_name,
+      u.nickname,
+      s.topic_id,
+      t.title,
+      s.status,
+      DATE_FORMAT(s.started_at, '%Y-%m-%d %H:%i') AS started_at,
+      DATE_FORMAT(s.ended_at, '%Y-%m-%d %H:%i') AS ended_at,
+      s.duration_seconds,
+      s.fail_reason,
+      r.report_id,
+      r.total_score AS score,
+      r.speech_rate,
+      r.pause_count,
+      r.fluency_score AS fluency,
+      r.content_score,
+      r.transcript,
+      r.content_summary,
+      r.result_label,
+      EXISTS(SELECT 1 FROM session_audios a WHERE a.session_id = s.session_id) AS has_audio
+    FROM training_sessions s
+    INNER JOIN users u ON u.user_id = s.user_id
+    INNER JOIN topics t ON t.topic_id = s.topic_id
+    LEFT JOIN analysis_reports r ON r.session_id = s.session_id
+    WHERE s.session_id = #{id}
+  </select>
+
+  <select id="findAudio" resultType="com.voxinsight.model.Rows$AudioRow">
+    SELECT mime_type, audio_data
+    FROM session_audios
+    WHERE session_id = #{id}
+  </select>
+
+  <delete id="deleteSession">
+    DELETE FROM training_sessions WHERE session_id = #{id}
+  </delete>
+
+  <select id="listFeedbacks" resultType="com.voxinsight.model.AdminRows$FeedbackRow">
+    SELECT
+      f.feedback_id AS id,
+      u.login_name,
+      u.nickname,
+      f.category,
+      f.content,
+      f.status,
+      DATE_FORMAT(f.created_at, '%Y-%m-%d %H:%i') AS created_at,
+      f.reply_content AS reply,
+      DATE_FORMAT(f.replied_at, '%Y-%m-%d %H:%i') AS replied_at
+    FROM user_feedbacks f
+    INNER JOIN users u ON u.user_id = f.user_id
+    <where>
+      <if test="status != null and status != ''">
+        AND f.status = #{status}
+      </if>
+    </where>
+    ORDER BY f.feedback_id DESC
+  </select>
+
+  <update id="updateFeedback">
+    UPDATE user_feedbacks
+    SET status = #{status},
+        reply_content = #{reply},
+        replied_at = #{repliedAt}
+    WHERE feedback_id = #{id}
+  </update>
+
+  <select id="findFeedback" resultType="com.voxinsight.model.AdminRows$FeedbackRow">
+    SELECT
+      f.feedback_id AS id,
+      u.login_name,
+      u.nickname,
+      f.category,
+      f.content,
+      f.status,
+      DATE_FORMAT(f.created_at, '%Y-%m-%d %H:%i') AS created_at,
+      f.reply_content AS reply,
+      DATE_FORMAT(f.replied_at, '%Y-%m-%d %H:%i') AS replied_at
+    FROM user_feedbacks f
+    INNER JOIN users u ON u.user_id = f.user_id
+    WHERE f.feedback_id = #{id}
+  </select>
+</mapper>

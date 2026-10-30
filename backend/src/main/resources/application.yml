@@ -1,0 +1,34 @@
+server:
+  port: 8080
+  error:
+    include-stacktrace: never
+    include-message: never
+
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/voxinsight?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&tinyInt1isBit=false
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    hikari:
+      connection-timeout: 5000
+      initialization-fail-timeout: 5000
+  jackson:
+    time-zone: Asia/Shanghai
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 8MB
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+app:
+  demo-user-id: 1
+  vosk-model: models/vosk-model-small-cn-0.22
+  dashscope-api-key: ${DASHSCOPE_API_KEY:}
+  dashscope-model: ${DASHSCOPE_MODEL:qwen-plus}
+  dashscope-base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}

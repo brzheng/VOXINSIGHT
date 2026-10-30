@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.voxinsight.mapper.ProfileMapper">
+  <select id="findUser" resultType="com.voxinsight.model.Rows$UserRow">
+    SELECT nickname, login_name, school, major, bio,
+      CASE WHEN avatar_data IS NULL THEN 0 ELSE 1 END AS has_avatar
+    FROM users
+    WHERE user_id = #{userId}
+  </select>
+
+  <select id="findSettings" resultType="com.voxinsight.model.Rows$SettingsRow">
+    SELECT
+      n.practice_reminder_enabled AS reminder_on,
+      n.report_notice_enabled AS report_notice_on,
+      n.goal_notice_enabled AS goal_notice_on,
+      n.reminder_time,
+      p.keep_training_history AS keep_history,
+      p.allow_anonymous_stats AS anonymous_stats
+    FROM notification_settings n
+    INNER JOIN privacy_settings p ON p.user_id = n.user_id
+    WHERE n.user_id = #{userId}
+  </select>
+
+  <update id="updateGoal">
+    UPDATE training_goals
+    SET target_count = #{targetCount}
+    WHERE user_id = #{userId}
+  </update>
+
+  <update id="updateNotification">
+    UPDATE notification_settings
+    SET practice_reminder_enabled = #{reminderOn},
+        report_notice_enabled = #{reportNoticeOn},
+        goal_notice_enabled = #{goalNoticeOn},
+        reminder_time = #{reminderTime}
+    WHERE user_id = #{userId}
+  </update>
+
+  <update id="updatePrivacy">
+    UPDATE privacy_settings
+    SET keep_training_history = #{keepHistory},
+        allow_anonymous_stats = #{anonymousStats}
+    WHERE user_id = #{userId}
+  </update>
+
+  <select id="findWeeklyTarget" resultType="int">
+    SELECT target_count FROM training_goals WHERE user_id = #{userId}
+  </select>
+
+  <update id="updateProfile">
+    UPDATE users
+    SET nickname = #{nickname}, school = #{school}, major = #{major}, bio = #{bio}
+    WHERE user_id = #{userId}
+  </update>
+
+  <update id="updateAvatar">
+    UPDATE users
+    SET avatar_mime = #{mimeType}, avatar_data = #{avatarData,jdbcType=BLOB}
+    WHERE user_id = #{userId}
+  </update>
+
+  <select id="findAvatar" resultType="com.voxinsight.model.Rows$AvatarRow">
+    SELECT avatar_mime AS mime_type, avatar_data AS data
+    FROM users
+    WHERE user_id = #{userId}
+  </select>
+
+  <select id="anonymousSummary" resultType="com.voxinsight.model.Rows$SummaryRow">
+    SELECT
+      (SELECT COUNT(*) FROM privacy_settings WHERE allow_anonymous_stats = 1) AS participants,
+      (
+        SELECT COUNT(*)
+        FROM training_sessions s
+        INNER JOIN privacy_settings p ON p.user_id = s.user_id AND p.allow_anonymous_stats = 1
+        WHERE s.status = 'completed'
+          AND s.ended_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
+          AND s.ended_at &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+      ) AS weekly_sessions
+  </select>
+
+  <insert id="insertFeedback">
+    INSERT INTO user_feedbacks (user_id, category, content, status)
+    VALUES (#{userId}, #{category}, #{content}, '待处理')
+  </insert>
+
+  <select id="listFeedback" resultType="com.voxinsight.model.Rows$FeedbackRowItem">
+    SELECT category, content, status, created_at, reply_content, replied_at
+    FROM user_feedbacks
+    WHERE user_id = #{userId}
+    ORDER BY feedback_id DESC
+  </select>
+</mapper>

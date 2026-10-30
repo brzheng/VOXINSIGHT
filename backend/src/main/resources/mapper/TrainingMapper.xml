@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.voxinsight.mapper.TrainingMapper">
+  <select id="findDashboard" resultType="com.voxinsight.model.Rows$DashboardRow">
+    SELECT
+      nickname,
+      brand_name_zh,
+      brand_name_en,
+      slogan,
+      weekly_target_count,
+      weekly_completed_count,
+      latest_score,
+      latest_report_id,
+      has_avatar
+    FROM v_user_dashboard
+    WHERE user_id = #{userId}
+  </select>
+
+  <select id="findRecommended" resultType="com.voxinsight.model.Rows$TopicRow">
+    SELECT
+      t.topic_id AS id,
+      c.category_name AS category,
+      t.title,
+      t.difficulty,
+      t.duration_min,
+      t.duration_max,
+      t.guide_text AS guide,
+      0 AS favorite
+    FROM topics t
+    INNER JOIN categories c ON c.category_id = t.category_id
+    WHERE t.is_recommended = 1
+    ORDER BY t.sort_order
+    LIMIT 1
+  </select>
+
+  <select id="findPreviousScore" resultType="com.voxinsight.model.Rows$ScoreRow">
+    SELECT r.total_score
+    FROM training_sessions s
+    INNER JOIN analysis_reports r ON r.session_id = s.session_id
+    WHERE s.user_id = #{userId}
+      AND s.status = 'completed'
+      AND EXISTS (
+        SELECT 1 FROM privacy_settings p
+        WHERE p.user_id = s.user_id AND p.keep_training_history = 1
+      )
+    ORDER BY s.ended_at DESC, s.session_id DESC
+    LIMIT 1 OFFSET 1
+  </select>
+
+  <select id="findReport" resultType="com.voxinsight.model.Rows$ReportRow">
+    SELECT
+      r.report_id AS id,
+      t.topic_id,
+      t.title,
+      s.ended_at,
+      s.duration_seconds,
+      r.total_score AS score,
+      r.speech_rate,
+      r.pause_count,
+      r.fluency_score AS fluency,
+      r.result_label AS label,
+      r.transcript,
+      r.content_score,
+      r.content_summary,
+      CASE
+        WHEN EXISTS (SELECT 1 FROM session_audios a WHERE a.session_id = s.session_id) THEN 1
+        ELSE 0
+      END AS has_audio
+    FROM analysis_reports r
+    INNER JOIN training_sessions s ON s.session_id = r.session_id
+    INNER JOIN topics t ON t.topic_id = s.topic_id
+    WHERE r.report_id = #{reportId}
+      AND s.user_id = #{userId}
+  </select>
+
+  <select id="findAudio" resultType="com.voxinsight.model.Rows$AudioRow">
+    SELECT a.mime_type, a.audio_data
+    FROM session_audios a
+    INNER JOIN training_sessions s ON s.session_id = a.session_id
+    INNER JOIN analysis_reports r ON r.session_id = s.session_id
+    WHERE r.report_id = #{reportId}
+      AND s.user_id = #{userId}
+  </select>
+
+  <select id="listFeedbacks" resultType="com.voxinsight.model.Rows$FeedbackRow">
+    SELECT feedback_type, content
+    FROM report_feedbacks
+    WHERE report_id = #{reportId}
+    ORDER BY sort_order
+  </select>
+
+  <select id="findStats" resultType="com.voxinsight.model.Rows$StatsRow">
+    SELECT total_session_count, total_duration_seconds, average_score
+    FROM v_user_training_stats
+    WHERE user_id = #{userId}
+  </select>
+
+  <select id="listHistory" resultType="com.voxinsight.model.Rows$HistoryRow">
+    SELECT
+      r.report_id,
+      s.session_id,
+      s.topic_id,
+      t.title AS topic_title,
+      COALESCE(s.ended_at, s.started_at, s.created_at) AS trained_at,
+      s.duration_seconds,
+      r.total_score,
+      s.status,
+      s.fail_reason
+    FROM training_sessions s
+    INNER JOIN topics t ON t.topic_id = s.topic_id
+    LEFT JOIN analysis_reports r ON r.session_id = s.session_id
+    WHERE s.user_id = #{userId}
+      AND EXISTS (
+        SELECT 1 FROM privacy_settings p
+        WHERE p.user_id = s.user_id AND p.keep_training_history = 1
+      )
+    ORDER BY trained_at DESC, s.session_id DESC
+  </select>
+
+  <select id="findMeta" resultType="com.voxinsight.model.Rows$MetaRow">
+    SELECT brand_name_zh, brand_name_en, slogan, about_text, version_name, as_of_date
+    FROM app_meta
+    WHERE meta_id = 1
+  </select>
+
+  <select id="listArticles" resultType="com.voxinsight.model.Rows$ArticleRow">
+    SELECT title, content
+    FROM help_articles
+    ORDER BY sort_order
+  </select>
+
+  <select id="findLatestReportForTopic" resultType="com.voxinsight.model.Rows$PreviousRow">
+    SELECT r.total_score, r.speech_rate, r.pause_count, r.fluency_score, r.result_label
+    FROM training_sessions s
+    INNER JOIN analysis_reports r ON r.session_id = s.session_id
+    WHERE s.user_id = #{userId}
+      AND s.topic_id = #{topicId}
+      AND s.status = 'completed'
+    ORDER BY s.ended_at DESC, s.session_id DESC
+    LIMIT 1
+  </select>
+
+  <select id="findLatestEndedAt" resultType="java.time.LocalDateTime">
+    SELECT ended_at
+    FROM training_sessions
+    WHERE user_id = #{userId}
+      AND ended_at IS NOT NULL
+    ORDER BY ended_at DESC, session_id DESC
+    LIMIT 1
+  </select>
+
+  <insert id="insertSession" useGeneratedKeys="true" keyProperty="sessionId">
+    INSERT INTO training_sessions (
+      user_id, topic_id, status, started_at, ended_at, duration_seconds, created_at
+    ) VALUES (
+      #{userId}, #{topicId}, 'completed', #{startedAt}, #{endedAt}, #{durationSeconds}, #{startedAt}
+    )
+  </insert>
+
+  <insert id="insertReport" useGeneratedKeys="true" keyProperty="reportId">
+    INSERT INTO analysis_reports (
+      session_id, total_score, speech_rate, pause_count, fluency_score, result_label, transcript,
+      content_score, content_summary, analyzed_at
+    ) VALUES (
+      #{sessionId}, #{totalScore}, #{speechRate}, #{pauseCount}, #{fluencyScore}, #{resultLabel}, #{transcript},
+      #{contentScore}, #{contentSummary}, #{analyzedAt}
+    )
+  </insert>
+
+  <insert id="insertFeedback">
+    INSERT INTO report_feedbacks (report_id, feedback_type, content, sort_order)
+    VALUES (#{reportId}, #{feedbackType}, #{content}, #{sortOrder})
+  </insert>
+
+  <insert id="insertAudio">
+    INSERT INTO session_audios (session_id, mime_type, byte_size, audio_data)
+    VALUES (#{sessionId}, #{mimeType}, #{byteSize}, #{audioData,jdbcType=BLOB})
+  </insert>
+
+  <delete id="deleteHistory">
+    DELETE FROM training_sessions WHERE user_id = #{userId}
+  </delete>
+
+  <insert id="insertOpenSession" useGeneratedKeys="true" keyProperty="sessionId">
+    INSERT INTO training_sessions (
+      user_id, topic_id, status, started_at, duration_seconds, created_at
+    ) VALUES (
+      #{userId}, #{topicId}, 'recording', #{startedAt}, 0, #{startedAt}
+    )
+  </insert>
+
+  <select id="findActive" resultType="com.voxinsight.model.Rows$SessionRow">
+    SELECT
+      s.session_id,
+      s.topic_id,
+      s.status,
+      s.duration_seconds,
+      s.fail_reason,
+      CASE WHEN a.session_id IS NULL THEN 0 ELSE 1 END AS has_audio
+    FROM training_sessions s
+    LEFT JOIN session_audios a ON a.session_id = s.session_id
+    WHERE s.user_id = #{userId}
+      AND s.topic_id = #{topicId}
+      AND s.status IN ('recording', 'paused', 'analyzing', 'failed')
+    ORDER BY s.session_id DESC
+    LIMIT 1
+  </select>
+
+  <select id="findSession" resultType="com.voxinsight.model.Rows$SessionRow">
+    SELECT
+      s.session_id,
+      s.topic_id,
+      s.status,
+      s.duration_seconds,
+      s.fail_reason,
+      CASE WHEN a.session_id IS NULL THEN 0 ELSE 1 END AS has_audio
+    FROM training_sessions s
+    LEFT JOIN session_audios a ON a.session_id = s.session_id
+    WHERE s.user_id = #{userId}
+      AND s.session_id = #{sessionId}
+  </select>
+
+  <update id="updateStatus">
+    UPDATE training_sessions
+    SET status = #{status},
+        fail_reason = #{failReason},
+        ended_at = COALESCE(#{endedAt}, ended_at),
+        duration_seconds = COALESCE(#{durationSeconds}, duration_seconds)
+    WHERE session_id = #{sessionId}
+      AND user_id = #{userId}
+      AND FIND_IN_SET(status, #{allowed})
+  </update>
+
+  <insert id="upsertAudio">
+    INSERT INTO session_audios (session_id, mime_type, byte_size, audio_data)
+    VALUES (#{sessionId}, #{mimeType}, #{byteSize}, #{audioData,jdbcType=BLOB})
+    ON DUPLICATE KEY UPDATE
+      mime_type = VALUES(mime_type),
+      byte_size = VALUES(byte_size),
+      audio_data = VALUES(audio_data)
+  </insert>
+
+  <select id="findSessionAudio" resultType="com.voxinsight.model.Rows$AudioRow">
+    SELECT a.mime_type, a.audio_data
+    FROM session_audios a
+    INNER JOIN training_sessions s ON s.session_id = a.session_id
+    WHERE a.session_id = #{sessionId}
+      AND s.user_id = #{userId}
+  </select>
+
+  <delete id="discardSession">
+    DELETE FROM training_sessions
+    WHERE session_id = #{sessionId}
+      AND user_id = #{userId}
+      AND status &lt;&gt; 'completed'
+  </delete>
+
+  <select id="listCheckpoints" resultType="com.voxinsight.model.Rows$CheckpointRow">
+    SELECT label, keywords
+    FROM topic_checkpoints
+    WHERE topic_id = #{topicId}
+    ORDER BY sort_order, checkpoint_id
+  </select>
+</mapper>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.voxinsight.mapper.TopicMapper">
+  <select id="listCategories" resultType="string">
+    SELECT category_name
+    FROM categories
+    ORDER BY sort_order
+  </select>
+
+  <select id="listTopics" resultType="com.voxinsight.model.Rows$TopicRow">
+    SELECT
+      t.topic_id AS id,
+      c.category_name AS category,
+      t.title,
+      t.difficulty,
+      t.duration_min,
+      t.duration_max,
+      t.guide_text AS guide,
+      IF(f.topic_id IS NULL, 0, 1) AS favorite
+    FROM topics t
+    INNER JOIN categories c ON c.category_id = t.category_id
+    LEFT JOIN user_favorites f
+      ON f.topic_id = t.topic_id
+     AND f.user_id = #{userId}
+    <where>
+      <if test="category != null and category != '' and category != '全部'">
+        AND c.category_name = #{category}
+      </if>
+      <if test="keyword != null and keyword != ''">
+        AND t.title LIKE CONCAT('%', #{keyword}, '%')
+      </if>
+    </where>
+    ORDER BY t.sort_order
+  </select>
+
+  <select id="findTopic" resultType="com.voxinsight.model.Rows$TopicRow">
+    SELECT
+      t.topic_id AS id,
+      c.category_name AS category,
+      t.title,
+      t.difficulty,
+      t.duration_min,
+      t.duration_max,
+      t.guide_text AS guide,
+      0 AS favorite
+    FROM topics t
+    INNER JOIN categories c ON c.category_id = t.category_id
+    WHERE t.topic_id = #{topicId}
+  </select>
+
+  <select id="countFavorite" resultType="int">
+    SELECT COUNT(*)
+    FROM user_favorites
+    WHERE user_id = #{userId}
+      AND topic_id = #{topicId}
+  </select>
+
+  <insert id="insertFavorite">
+    INSERT INTO user_favorites (user_id, topic_id)
+    VALUES (#{userId}, #{topicId})
+  </insert>
+
+  <delete id="deleteFavorite">
+    DELETE FROM user_favorites
+    WHERE user_id = #{userId}
+      AND topic_id = #{topicId}
+  </delete>
+</mapper>

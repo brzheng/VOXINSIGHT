@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.voxinsight.mapper.AuthMapper">
+  <select id="findUserIdByLogin" resultType="java.lang.Long">
+    SELECT user_id FROM users WHERE login_name = #{loginName}
+  </select>
+
+  <select id="findPasswordHash" resultType="string">
+    SELECT password_hash FROM users WHERE login_name = #{loginName}
+  </select>
+
+  <select id="findNickname" resultType="string">
+    SELECT nickname FROM users WHERE user_id = #{userId}
+  </select>
+
+  <select id="findRole" resultType="string">
+    SELECT role FROM users WHERE user_id = #{userId}
+  </select>
+
+  <insert id="insertUser">
+    INSERT INTO users (login_name, password_hash, nickname, avatar_url, created_at)
+    VALUES (#{loginName}, #{passwordHash}, #{nickname}, '', CURRENT_TIMESTAMP)
+  </insert>
+
+  <select id="findNewUserId" resultType="java.lang.Long">
+    SELECT user_id FROM users WHERE login_name = #{loginName}
+  </select>
+
+  <insert id="insertGoal">
+    INSERT INTO training_goals (user_id, period_type, target_count) VALUES (#{userId}, 'weekly', 3)
+  </insert>
+
+  <insert id="insertNotification">
+    INSERT INTO notification_settings (
+      user_id, practice_reminder_enabled, reminder_time, report_notice_enabled, goal_notice_enabled
+    ) VALUES (#{userId}, 1, '20:00:00', 1, 1)
+  </insert>
+
+  <insert id="insertPrivacy">
+    INSERT INTO privacy_settings (user_id, keep_training_history, allow_anonymous_stats)
+    VALUES (#{userId}, 1, 0)
+  </insert>
+
+  <insert id="insertToken">
+    INSERT INTO auth_tokens (token, user_id, expires_at) VALUES (#{token}, #{userId}, #{expiresAt})
+  </insert>
+
+  <select id="findUserIdByToken" resultType="java.lang.Long">
+    SELECT user_id FROM auth_tokens WHERE token = #{token} AND expires_at > #{now}
+  </select>
+
+  <delete id="deleteToken">
+    DELETE FROM auth_tokens WHERE token = #{token}
+  </delete>
+</mapper>

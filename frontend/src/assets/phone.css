@@ -1,0 +1,199 @@
+.stage {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+
+.device {
+  --brand: #3949ab;
+  --ai: #7567e8;
+  --bg: #f5f7fc;
+  --text: #20263a;
+  --muted: #65708a;
+  --ok: #16a085;
+  --warn: #e9a23b;
+  --danger: #d94b55;
+  width: min(390px, 100%);
+  height: min(844px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 28px;
+  box-shadow:
+    0 24px 60px rgba(32, 38, 58, 0.16),
+    0 0 0 1px rgba(32, 38, 58, 0.04);
+}
+
+.device .scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 0 20px 16px;
+}
+
+.device .dock {
+  display: flex;
+  gap: 8px;
+  flex: none;
+  padding: 8px 20px 16px;
+  background: linear-gradient(#f5f7fc, #f5f7fc);
+}
+
+.device .page-bar {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+  padding: 14px 12px 8px;
+}
+
+.device .page-bar h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.device .icon-btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.device .icon-btn svg,
+.tabbar svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.device .screen-title {
+  margin: 12px 0 0;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.device .card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(32, 38, 58, 0.06);
+}
+
+.device .btn {
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.device .btn-primary {
+  color: #fff;
+  background: var(--brand);
+}
+
+.device .btn-light {
+  color: var(--brand);
+  background: #fff;
+}
+
+.device .btn-ghost {
+  color: var(--brand);
+  background: #eef0fa;
+}
+
+.device .btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tabbar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  flex: none;
+  height: 64px;
+  border-top: 1px solid #e6ebf5;
+  background: #fff;
+}
+
+.tabbar a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--muted, #65708a);
+  text-decoration: none;
+  font-size: 11px;
+}
+
+.tabbar a.active {
+  color: var(--brand, #3949ab);
+  font-weight: 700;
+}
+
+.device .mask {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: end center;
+  padding: 20px;
+  background: rgba(32, 38, 58, 0.46);
+}
+
+.device .dialog {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 20px;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.device .dialog h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.device .dialog p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.device .dialog-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.device .dialog-actions .btn {
+  flex: 1;
+}
+
+@media (max-width: 480px) {
+  .stage {
+    padding: 0;
+    background: #f5f7fc;
+  }
+
+  .device {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
