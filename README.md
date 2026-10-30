@@ -62,21 +62,27 @@ Slogan：让每一次表达，都有迹可循。
 ```
 VOXINSIGHT/
 ├── README.md                      本文
-├── voxinsight.sql                 建库脚本：删库重建，含表、视图和种子数据
-├── migrate-session-audio.sql      已有库补录音表
-├── migrate-speech-score.sql       已有库补识别文本和内容分字段
-├── migrate-accounts.sql           已有库补账号、令牌、通知、反馈
-├── migrate-session-state.sql      已有库补训练状态流转
-├── migrate-admin.sql              已有库补管理员角色和反馈回复
+├── sql/                           数据库脚本，见下方说明
 ├── frontend/                      移动端原型（端口 5173）
 ├── web/                           桌面学员端（端口 5174）
 ├── admin/                         管理后台（端口 5175）
 └── backend/                       Spring Boot 接口（端口 8080）
 ```
 
-全新环境只执行 `voxinsight.sql`。已经导入过旧库、又不想清空数据时，再按上面顺序执行对应的 `migrate-*.sql`。某条语句提示列已存在，说明这一步做过，跳过该句即可。
+数据库脚本都在 `sql/`。后端启动时不读取这些文件，只连接已经导入的 `voxinsight` 库。
 
-### 数据库 `voxinsight.sql`
+| 文件 | 用途 |
+| --- | --- |
+| `sql/voxinsight.sql` | 删库重建。含全部表、视图和种子数据。全新环境只执行这一份 |
+| `sql/migrate-session-audio.sql` | 已有库补录音表 |
+| `sql/migrate-speech-score.sql` | 已有库补识别文本，并放宽语速、停顿取值 |
+| `sql/migrate-accounts.sql` | 已有库补账号、令牌、通知、反馈 |
+| `sql/migrate-session-state.sql` | 已有库补训练状态流转和题目要点 |
+| `sql/migrate-admin.sql` | 已有库补管理员角色和反馈回复 |
+
+已经导入过旧库、又不想清空数据时，按上表顺序执行对应的 `sql/migrate-*.sql`。这些改动已经包含在 `sql/voxinsight.sql` 里，重新导入全库后不必再跑。某条语句提示列已存在，说明这一步做过，跳过该句即可。
+
+### 数据库 `sql/voxinsight.sql`
 
 | 对象 | 作用 |
 | --- | --- |
@@ -177,7 +183,7 @@ Spring Boot 3.5、Java 21、MyBatis。入口是 `src/main/java/com/voxinsight/Vo
 | `pom.xml` | Maven 依赖：Web、Validation、MyBatis、MySQL、Vosk |
 | `.env.example` | 数据库和百炼密钥的示例。复制为 `.env` 后填写 |
 | `src/main/resources/application.yml` | 端口 8080、数据源、上传上限 8MB、Vosk 模型路径、百炼地址 |
-| `src/main/resources/mapper/*.xml` | SQL。表结构以根目录 `voxinsight.sql` 为准 |
+| `src/main/resources/mapper/*.xml` | 业务查询。表结构以 `sql/voxinsight.sql` 为准 |
 | `config/WebConfig.java` | 允许 5173、5174、5175 以及 `*.trycloudflare.com` 跨域 |
 | `config/AppProperties.java` | 读取模型路径和百炼配置 |
 | `web/*Controller.java` | HTTP 接口，见下一节 |
@@ -361,7 +367,7 @@ Authorization: Bearer <token>
 
 ### 1. 导入数据库
 
-在 MySQL 中执行仓库根目录的 `voxinsight.sql`。脚本会删除并重建整个 `voxinsight` 库，已有数据会被清空。
+在 MySQL 中执行 `sql/voxinsight.sql`。脚本会删除并重建整个 `voxinsight` 库，已有数据会被清空。旧库需要保留数据时，不要执行这一份，改为按「项目结构」里的顺序执行 `sql/migrate-*.sql`。
 
 导入成功后应能看到测试用户和管理员，以及若干道题和训练记录。
 

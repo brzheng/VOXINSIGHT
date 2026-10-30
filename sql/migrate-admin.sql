@@ -1,4 +1,4 @@
--- 已有 voxinsight 库升级到管理后台。全新导入 voxinsight.sql 时不必执行。
+-- 已有 voxinsight 库升级到管理后台。全新导入同目录的 voxinsight.sql 时不必执行。
 -- 每条语句只需成功一次。若提示列已存在，说明这一步已经做过，跳过该句后继续即可。
 
 USE voxinsight;

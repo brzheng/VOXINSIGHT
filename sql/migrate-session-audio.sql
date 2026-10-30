@@ -1,5 +1,5 @@
 -- 给已经导入过的 voxinsight 库补上录音表。
--- 不会删除现有训练记录。重新执行 voxinsight.sql 会清空全库，不必再跑本文件。
+-- 不会删除现有训练记录。重新执行同目录的 voxinsight.sql 会清空全库，不必再跑本文件。
 
 USE voxinsight;
 

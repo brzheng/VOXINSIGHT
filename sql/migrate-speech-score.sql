@@ -1,5 +1,5 @@
 -- 让已有库可以保存语音识别评分。不会删除训练记录。
--- 重新导入 voxinsight.sql 会清空全库，不必再跑本文件。
+-- 重新导入同目录的 voxinsight.sql 会清空全库，不必再跑本文件。
 
 USE voxinsight;
 
