@@ -31,7 +31,3 @@ backend/models/
 *.local
 coverage/
 *.tsbuildinfo
-
-# 本地规划，不上传 GitHub
-*.md
-
